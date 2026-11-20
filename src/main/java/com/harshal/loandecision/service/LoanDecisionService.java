@@ -7,6 +7,7 @@ import com.harshal.loandecision.domain.RiskBand;
 import com.harshal.loandecision.dto.ApplicantRequest;
 import com.harshal.loandecision.dto.LoanApplicationRequest;
 import com.harshal.loandecision.dto.LoanRequest;
+import com.harshal.loandecision.repository.LoanDecisionRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,18 +23,27 @@ public class LoanDecisionService {
     private final EmiCalculator emiCalculator;
     private final InterestRateCalculator interestRateCalculator;
     private final EligibilityEvaluator eligibilityEvaluator;
+    private final LoanDecisionRepository loanDecisionRepository;
 
     public LoanDecisionService(RiskBandClassifier riskBandClassifier,
                                EmiCalculator emiCalculator,
                                InterestRateCalculator interestRateCalculator,
-                               EligibilityEvaluator eligibilityEvaluator) {
+                               EligibilityEvaluator eligibilityEvaluator,
+                               LoanDecisionRepository loanDecisionRepository) {
         this.riskBandClassifier = riskBandClassifier;
         this.emiCalculator = emiCalculator;
         this.interestRateCalculator = interestRateCalculator;
         this.eligibilityEvaluator = eligibilityEvaluator;
+        this.loanDecisionRepository = loanDecisionRepository;
     }
 
     public LoanDecision evaluate(LoanApplicationRequest request) {
+        LoanDecision decision = decide(request);
+        loanDecisionRepository.save(decision);
+        return decision;
+    }
+
+    private LoanDecision decide(LoanApplicationRequest request) {
         ApplicantRequest applicant = request.applicant();
         LoanRequest loan = request.loan();
         UUID applicationId = UUID.randomUUID();

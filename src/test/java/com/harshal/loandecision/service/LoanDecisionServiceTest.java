@@ -9,10 +9,12 @@ import com.harshal.loandecision.domain.RiskBand;
 import com.harshal.loandecision.dto.ApplicantRequest;
 import com.harshal.loandecision.dto.LoanApplicationRequest;
 import com.harshal.loandecision.dto.LoanRequest;
+import com.harshal.loandecision.repository.LoanDecisionRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,11 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class LoanDecisionServiceTest {
 
+    private final LoanDecisionRepository repository = new LoanDecisionRepository();
+
     private final LoanDecisionService service = new LoanDecisionService(
             new RiskBandClassifier(),
             new EmiCalculator(),
             new InterestRateCalculator(),
-            new EligibilityEvaluator());
+            new EligibilityEvaluator(),
+            repository);
 
     @Test
     void approvesEligibleApplicationWithSingleOffer() {
@@ -74,6 +79,15 @@ class LoanDecisionServiceTest {
         assertEquals(
                 List.of(RejectionReason.AGE_TENURE_LIMIT_EXCEEDED, RejectionReason.EMI_EXCEEDS_60_PERCENT),
                 decision.rejectionReasons());
+    }
+
+    @Test
+    void storesEveryDecision() {
+        LoanDecision approved = service.evaluate(request(30, "75000", 720, "500000", 36));
+        LoanDecision rejected = service.evaluate(request(30, "75000", 550, "500000", 36));
+
+        assertEquals(Optional.of(approved), repository.findById(approved.applicationId()));
+        assertEquals(Optional.of(rejected), repository.findById(rejected.applicationId()));
     }
 
     private LoanApplicationRequest request(int age, String income, int creditScore, String amount, int tenureMonths) {
